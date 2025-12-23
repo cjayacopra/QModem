@@ -435,9 +435,6 @@ static struct mhi_netdev *ndev_to_mhi(struct net_device *ndev) {
 		return NULL;
 		
 	mhi_netdev_priv = netdev_priv(ndev);
-	if (!mhi_netdev_priv)
-		return NULL;
-		
 	return mhi_netdev_priv->mhi_netdev;
 }
 
