@@ -430,10 +430,10 @@ struct qmap_priv {
 
 static struct mhi_netdev *ndev_to_mhi(struct net_device *ndev) {
 	struct mhi_netdev_priv *mhi_netdev_priv;
-	
+
 	if (!ndev)
 		return NULL;
-		
+
 	mhi_netdev_priv = netdev_priv(ndev);
 	return mhi_netdev_priv->mhi_netdev;
 }
