@@ -684,8 +684,8 @@ mhi_dial()
 
 qmi_dial()
 {
-    cmd_line="quectel-CM"
-    [ -e "/usr/bin/quectel-CM-M" ] && cmd_line="quectel-CM-M" && tom_modified=1
+    cmd_line="quectel-cm"
+    [ -e "/usr/bin/quectel-cm-m" ] && cmd_line="quectel-cm-m" && tom_modified=1
     case $pdp_type in
         "ip") cmd_line="$cmd_line -4" ;;
         "ipv6") cmd_line="$cmd_line -6" ;;
@@ -732,7 +732,7 @@ qmi_dial()
     if [ "$do_not_add_dns" = "1" ];then
         cmd_line="${cmd_line} -D"
     fi
-    if [ -e "/usr/bin/quectel-CM-M" ];then
+    if [ -e "/usr/bin/quectel-cm-m" ];then
         [ -n "$metric" ] && cmd_line="$cmd_line -d -M $metric"
         [ "$force_set_apn" == "1" ] && cmd_line="$cmd_line -F"
     else
@@ -742,7 +742,7 @@ qmi_dial()
     while true; do
         m_debug "dialing: $cmd_line"
         $cmd_line
-        m_debug "quectel-CM exited, retrying dial"
+        m_debug "quectel-cm exited, retrying dial"
     done
 }
 
