@@ -1,4 +1,4 @@
-#/bin/sh
+#!/bin/sh
 
 action=$1
 config=$2
@@ -207,8 +207,8 @@ scan_pcie_slot_interfaces()
         local assoc_usb_path="/sys/bus/usb/devices/$associated_usb"
         local slot_interfaces=$(ls $assoc_usb_path | grep -E "$associated_usb:[0-9]\.[0-9]+")
         echo checking slot_interfaces: $slot_interfaces
-        slot_vid=$(cat "$assoc_usb_path/$interface/idVendor")
-        slot_pid=$(cat "$assoc_usb_path/$interface/idProduct")
+        slot_vid=$(cat "$assoc_usb_path/idVendor")
+        slot_pid=$(cat "$assoc_usb_path/idProduct")
         modem_port_rule=$(cat /usr/share/qmodem/modem_port_rule.json)
         modem_port_config=$(echo $modem_port_rule | jq --arg id "$slot_vid:$slot_pid" '.modem_port_rule.usb[$id]')
         included_ports=$(echo $modem_port_config | jq -r '.include // empty')
@@ -255,8 +255,8 @@ scan_usb_slot_interfaces()
     net_devices=""
     tty_devices=""
     [ ! -d "$slot_path" ] && return
-    slot_vid=$(cat "$slot_path/$interface/idVendor")
-    slot_pid=$(cat "$slot_path/$interface/idProduct")
+    slot_vid=$(cat "$slot_path/idVendor")
+    slot_pid=$(cat "$slot_path/idProduct")
     local slot_interfaces=$(ls $slot_path | grep -E "$slot:[0-9]\.[0-9]+")
     for interface in $slot_interfaces; do
         unset device

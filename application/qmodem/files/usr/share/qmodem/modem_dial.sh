@@ -141,7 +141,7 @@ update_config()
     config_get pdp_index $modem_config pdp_index
     [ -n "$pdp_index" ] && userset_pdp_index="1" || userset_pdp_index="0"
     config_get suggest_pdp_index $modem_config suggest_pdp_index
-    [ -z "$suggest_pdp_index"] && suggest_pdp_index=$(get_platform_suggest_pdp_index)
+    [ -z "$suggest_pdp_index" ] && suggest_pdp_index=$(get_platform_suggest_pdp_index)
     [ -z "$pdp_index" ] && pdp_index=$suggest_pdp_index
     config_get ra_master $modem_config ra_master
     config_get extend_prefix $modem_config extend_prefix
@@ -157,6 +157,7 @@ update_config()
     config_get alias $modem_config alias
     driver=$(get_driver)
     update_sim_slot
+    pdp_type=$(echo "${pdp_type:-ip}" | tr 'A-Z' 'a-z')
     case $sim_slot in
         1)
         config_get apn $modem_config apn
@@ -333,6 +334,8 @@ set_if()
     fw_reload_flag=0
     dhcp_reload_flag=0
     network_reload_flag=0
+    env4=0
+    env6=0
     #check if exist
     proto="dhcp"
     protov6="dhcpv6"

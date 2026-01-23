@@ -72,18 +72,19 @@ update_cfg(){
 }
 
 update_netcfg(){
-	# if alias is set, network config name is alias else modem_cfg name
-	config_load network
-	if [ -n "$ALIAS" ]; then
-		config_get NET_DEV "$ALIAS" ifname
+        # if alias is set, network config name is alias else modem_cfg name
+        config_load network
+        if [ -n "$ALIAS" ]; then
+                config_get NET_DEV "$ALIAS" ifname
         Ifv4="$ALIAS"
-	else
-		config_get NET_DEV "$Modem_ID" ifname
+        else
+                config_get NET_DEV "$Modem_ID" ifname
         Ifv4="$Modem_ID"
-	fi
+        fi
     Ifv6="$Ifv4"v6
     v4_info=$(ifstatus $Ifv4)
     v6_info=$(ifstatus $Ifv6)
+    [ -z "$NET_DEV" ] && NET_DEV=$(echo $v4_info | jq -r '.l3_device // .device // empty')
     dns_v4=$(echo $v4_info | jq -r --arg "key" "dns-server" '.[$key][0]')
     dns_v6=$(echo $v6_info | jq -r --arg "key" "dns-server" '.[$key][0]')
     gateway_v4=$(echo $v4_info | jq -r --arg "key" "route" '.[$key][] | select(.target == "0.0.0.0") | .nexthop')
@@ -166,14 +167,13 @@ _ping() {
 _curl() {
   url=$1
   # timeout 10s
-  res=$(curl --connect-timeout 10 --interface $NET_DEV $url -o /dev/null --silent --show-error)
+  res=$(curl --connect-timeout 10 --interface "$NET_DEV" "$url" -o /dev/null --silent --show-error 2>&1)
   status=$?
   if [ "$status" -ne 0 ]; then
     log "Curl failed: $res"
   fi
   return $status
 }
-
 # Method: signal - Get signal strength
 # Usage: signal <Modem_ID>
 

@@ -35,14 +35,14 @@ try_cache() {
     cache_file=$2
     function_name=$3
     current_time=$(date +%s)
-    file_time=$(stat -t $cache_file | awk '{print $14}')
+    file_time=$(stat -t $cache_file 2>/dev/null | awk '{print $14}')
     [ -z "$file_time" ] && file_time=0
     if [ ! -f $cache_file ] || [ $(($current_time - $file_time)) -gt $cache_timeout ]; then
-        touch $cache_file
+        touch $cache_file 2>/dev/null
         json_add_array modem_info
         $function_name
         json_close_array
-        json_dump > $cache_file
+        json_dump > $cache_file 2>/dev/null
         return 1
     else
         cat $cache_file
@@ -55,13 +55,13 @@ get_sms(){
     cache_timeout=$1
     cache_file=$2
     current_time=$(date +%s)
-    file_time=$(stat -t $cache_file | awk '{print $14}')
+    file_time=$(stat -t $cache_file 2>/dev/null | awk '{print $14}')
     [ -z "$file_time" ] && file_time=0
     get_sms_capabilities
     if [ ! -f $cache_file ] || [ $(($current_time - $file_time)) -gt $cache_timeout ]; then
-        touch $cache_file
+        touch $cache_file 2>/dev/null
         #sms_tool_q -d $at_port -j recv > $cache_file
-        tom_modem $use_ubus_flag  -d $at_port -o r > $cache_file
+        tom_modem $use_ubus_flag  -d $at_port -o r > $cache_file 2>/dev/null
         echo $(cat $cache_file ; json_dump) | jq -s 'add'
     else
         echo $(cat $cache_file ; json_dump) | jq -s 'add'
@@ -70,10 +70,10 @@ get_sms(){
 
 get_at_cfg(){
     json_add_object at_cfg
-    duns=$(ls /dev/mhi_DUN*)
-    ttys=$(ls /dev/ttyUSB*)
-    ttyacms=$(ls /dev/ttyACM*)
-    wwanNatN=$(ls /dev/wwan* |grep -E wwan[0-9]at[0-9])
+    duns=$(ls /dev/mhi_DUN* 2>/dev/null)
+    ttys=$(ls /dev/ttyUSB* 2>/dev/null)
+    ttyacms=$(ls /dev/ttyACM* 2>/dev/null)
+    wwanNatN=$(ls /dev/wwan* 2>/dev/null |grep -E wwan[0-9]at[0-9])
     all_ttys="$duns $ttys $ttyacms $wwanNatN"
     json_add_array other_ttys
     for tty in $all_ttys; do
