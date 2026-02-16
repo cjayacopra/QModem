@@ -61,6 +61,7 @@ endef
 
 define Package/$(PKG_NAME)/install
 		$(CP) ./files/* $(1)/
+		$(INSTALL_DIR) $(1)/usr/share/qmodem/led_scripts
+		$(INSTALL_BIN) ./files/usr/share/qmodem/led_scripts/*.sh $(1)/usr/share/qmodem/led_scripts/
 endef
-
 $(eval $(call BuildPackage,$(PKG_NAME)))

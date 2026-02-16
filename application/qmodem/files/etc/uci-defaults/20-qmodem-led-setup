@@ -1,0 +1,21 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+board=$(board_name)
+
+case "$board" in
+    arcadyan,aw1000)
+        uci -q set qmodem.@main[0].led_script='aw1000'
+        # Also set for any existing modem-device sections if they don't have one set
+        uci -q show qmodem | grep "modem-device" | cut -d. -f2 | sort -u | while read -r section; do
+            current_script=$(uci -q get qmodem.$section.led_script)
+            if [ -z "$current_script" ]; then
+                uci -q set qmodem.$section.led_script='aw1000'
+            fi
+        done
+        uci commit qmodem
+        ;;
+esac
+
+exit 0
