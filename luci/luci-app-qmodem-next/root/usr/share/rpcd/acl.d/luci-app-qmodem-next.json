@@ -43,6 +43,7 @@
 					"clear_sent_history",
 					"set_sms_storage"
 				],
+				"luci": [ "setInitAction" ],
 				"uci": [ "qmodem", "sms_forwarder" ]
 			},
 			"uci": [ "qmodem", "sms_forwarder" ]
