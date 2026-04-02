@@ -463,6 +463,7 @@ get_rat()
 		"2"|"4"|"5"|"6"|"9"|"10") rat="WCDMA" ;;
         "7") rat="LTE" ;;
         "11"|"12") rat="NR" ;;
+        "13") rat="LTE-NR" ;;
 	esac
     echo "${rat}"
 }
@@ -487,11 +488,24 @@ get_connect_status()
         at_cmd="AT+CGACT?"
         expect="+CGACT:"
         result=`at  $at_port $at_cmd | grep $expect|tr '\r' '\n'`
+        # for fm350 pdp_index 0, GGACT will return empty,so we need to add it manually
+        if [ -z "$result" ]; then
+            case $vendor in
+                "fibocom")
+                    case $platform in
+                        "mediatek")
+                            result="+CGACT: 0,1"
+                            ;;
+                    esac
+                    ;;
+                esac
+        fi
         
         for pdp_index in `echo  "$result" | tr -d "\r" | awk -F'[,:]' '$3 == 1 {print $2}'`; do
             at_cmd="AT+CGPADDR=%s"
             at_cmd=$(printf "$at_cmd" "$pdp_index")
             expect="+CGPADDR:"
+
             result=$(at  $at_port $at_cmd | grep $expect)
             if [ -n "$result" ];then
                 ipv6=$(echo $result | grep -oE "\b([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}\b")

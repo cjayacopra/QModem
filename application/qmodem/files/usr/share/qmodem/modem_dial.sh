@@ -137,6 +137,7 @@ update_config()
     config_get at_port $modem_config at_port
     config_get manufacturer $modem_config manufacturer
     config_get platform $modem_config platform
+    config_get use_ubus $modem_config use_ubus
     config_get force_set_apn $modem_config force_set_apn
     config_get pdp_index $modem_config pdp_index
     [ -n "$pdp_index" ] && userset_pdp_index="1" || userset_pdp_index="0"
@@ -191,6 +192,11 @@ update_config()
     interface_name=$modem_config
     [ -n "$alias" ] && interface_name=$alias
     interface6_name=${interface_name}v6
+    if [ "$use_ubus" = "1" ]; then
+        use_ubus_flag="-u"
+    else
+        use_ubus_flag=""
+    fi
 }
 
 check_dial_prepare()
@@ -378,7 +384,7 @@ set_if()
     interface=$(uci -q get network.$interface_name)
     interfacev6=$(uci -q get network.$interface6_name)
     if [ "$env4" -eq 1 ];then
-        if [ -z "$inetrface" ];then
+        if [ -z "$ineterface" ];then
             uci set network.${interface_name}=interface
             uci set network.${interface_name}.modem_config="${modem_config}"
             uci set network.${interface_name}.proto="${proto}"
@@ -411,8 +417,8 @@ set_if()
     fi
     if [ "$env6" -eq 1 ];then
         if [ -z "$interfacev6" ];then
-            uci set network.lan.ipv6='1'
-            uci set network.lan.ip6assign='64'
+            # uci set network.lan.ipv6='1' # user decide themself whether to enable IPv6 on LAN.
+            # uci set network.lan.ip6assign='64'
             uci set network.${interface6_name}='interface'
             uci set network.${interface6_name}.modem_config="${modem_config}"
             uci set network.${interface6_name}.proto="${protov6}"
@@ -590,7 +596,11 @@ dial(){
 
 wwan_hang()
 {
-    m_debug "wwan_hang"
+    pid=$(cat "${MODEM_RUNDIR}/${modem_config}_dir/$modem_config.pid")
+    m_debug "wwan_hang, pid = $pid"
+    if [ -n $pid ]; then
+        kill $pid
+    fi
 }
 
 ecm_hang()
@@ -633,7 +643,7 @@ ecm_hang()
             at_command="ATI"
             ;;
     esac
-    fastat "${at_port}" "${at_command}"
+    at "${at_port}" "${at_command}"
     [ -n "$delay" ] && sleep "$delay"
 }
 
@@ -747,7 +757,10 @@ qmi_dial()
     cmd_line="$cmd_line -f $log_file"
     while true; do
         m_debug "dialing: $cmd_line"
-        $cmd_line
+        $cmd_line &
+        echo "$!" > "${MODEM_RUNDIR}/${modem_config}_dir/$modem_config.pid"
+        m_debug "pid: $!"
+        wait
         m_debug "quectel-cm exited, retrying dial"
     done
 }
@@ -783,8 +796,14 @@ at_dial()
         "fibocom")
             case $platform in
                 "mediatek")
-                    delay=3
-                    [ "$apn" = "auto" ] || [ -z "$apn" ] && apn="cbnet"
+                    # delay=3
+                    # [ "$apn" = "auto" ] || [ -z "$apn" ] && apn="cbnet"
+                    if [ "$pdp_index" = "3" ];then
+                        delay=3
+                        [ "$apn" = "auto" ] || [ -z "$apn" ] && apn="cbnet"
+                        m_debug "Due to a historical issue (https://github.com/FUjr/QModem/issues/179#issuecomment-3968653343), the fm350 pdp_index was incorrectly set to 3, which caused dialing to work but remain unstable. In version 2026.2.27, we have fixed this issue."
+                        m_debug "To avoid unexpectedly removing legacy configuration files, we applied additional handling to ensure consistent behavior with previous versions. However, if you see this message, please manually set the pdp_index to 0. We apologize for any inconvenience caused."
+                    fi
                     at_command="AT+CGACT=1,$pdp_index"
                     cgdcont_command="AT+CGDCONT=$pdp_index,\"$pdp_type\",\"$apn\""
                     ;;
@@ -854,10 +873,18 @@ at_dial()
             ;;
         "simcom")
             case $platform in
+                "asrmicro")                    
+                    at_command="AT+CGACT=1,$pdp_index"
+                    cgdcont_command="AT+CGDCONT=$pdp_index,\"$pdp_type\""$apn_append
+                    ;;
                 "qualcomm")
                     local cnmp=$(at ${at_port} "AT+CNMP?" | grep "+CNMP:" | sed 's/+CNMP: //g' | sed 's/\r//g')
                     at_command="AT+CNMP=$cnmp;+CNWINFO=1"
                     cgdcont_command="AT+CGDCONT=1,\"$pdp_type\""$apn_append
+                    ;;
+                "lte")
+                    at_command="AT+CGACT=1,$pdp_index"
+                    cgdcont_command="AT+CGDCONT=$pdp_index,\"$pdp_type\""$apn_append
                     ;;
             esac
             ;;
@@ -894,7 +921,7 @@ at_dial()
             esac
             ;;
     esac
-	m_debug "dialing: vendor:$manufacturer; platform:$platform; driver:$driver; apn:$apn; command:$at_command"
+	m_debug "dialing: vendor:$manufacturer; platform:$platform; driver:$driver; apn:$apn; command:$at_command pdp_index:$pdp_index"
     m_debug "dial_cmd: $at_command; cgdcont_cmd: $cgdcont_command; ppp_auth_cmd: $ppp_auth_command"
 	case $driver in
         "mtk_pcie")
@@ -1133,6 +1160,19 @@ handle_ip_change()
     esac
 }
 
+check_cfun(){
+    at_command="AT+CFUN?"
+    response=$(at ${at_port} "${at_command}")
+    cfun_status=$(echo "$response" | tr -d "\r" | grep "+CFUN:" | awk '{print $2}')
+    if [ "$cfun_status" = "1" ]; then
+        return 0
+    else
+        at_command="AT+CFUN=1"
+        response=$(at ${at_port} "${at_command}")
+        return 1
+    fi
+}
+
 check_logfile_line()
 {
     local line=$(wc -l $log_file | awk '{print $1}')
@@ -1146,6 +1186,18 @@ unexpected_response_count=0
 at_dial_monitor()
 {
     #check if support auto dial
+    check_cfun
+    if [ $? -ne 0 ]; then
+        m_debug "CFUN is not 1, try to set it to 1"
+        sleep 5
+        check_cfun
+        if [ $? -ne 0 ]; then
+            m_debug "Failed to set CFUN to 1, continue with monitor"
+            return
+        else
+            m_debug "Successfully set CFUN to 1"
+        fi
+    fi
     auto_dial_support=0
     at_auto_dial
     auto_dial_support=$?
